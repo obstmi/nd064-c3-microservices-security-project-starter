@@ -5,3 +5,6 @@ __pycache__/
 **/.vagrant
 **/.DS_Sto
 cluster.rkestate
+**/.vagrant
+**/.DS_Store
+docker-bench
