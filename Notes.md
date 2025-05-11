@@ -4,6 +4,9 @@
 * cd docker-bench 
 * go build -o docker-bench 
 * ./docker-bench --help 
+* ./docker-bench --include-test-output --benchmark cis-1.2 > docker-bench.txt
+* cat docker-bench.txt | grep FAIL
+
 
 ## Grype (local)
 * mkdir -p $HOME/.local/bin
@@ -20,3 +23,11 @@ python3 -m venv .myvenv
 source .myvenv/bin/activate  
 ..  
 deactivate
+* Docker compose up and down:  
+docker compose down  
+docker compose build  
+docker compose up  
+* Harden docker environment:  
+docker pull opensuse/leap:latest
+docker build . -t obstmi/leap:hardened-v0.1 -m 256mb --no-cache=true  
+

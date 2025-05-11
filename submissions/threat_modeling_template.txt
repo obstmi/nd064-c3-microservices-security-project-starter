@@ -1,0 +1,28 @@
+Docker Threat Modeling
+Given Docker's system components and the STRIDE framework, identify five potential threats that may arise.
+
+* Spoofing (Identity Forgery): 
+Interception of the traffic from the Docker client to the Docker daemon or registry by a malicious party because of non-encrypted communication or stolen credentials.
+
+* Tampering (Data Manipulation): 
+Image modification: Attackers alter images, e.g., to inject malware.
+
+* Repudiation (Denial of Action):
+Missing or insufficient logging: Container or user actions are not properly logged.
+Enables the attacker to make changes on the Client or the Docker host that are not legitimate.
+
+* Information Disclosure:
+Misconfigured networks: Internal container services are accidentally exposed to the outside.
+
+* Denial of Service:
+Unlimited resources: Containers without memory/CPU limits can overload the host system.
+
+* Elevation of Privilege:
+Container escape: Vulnerabilities allow breaking out of containers to the host.
+
+
+Kubernetes Threat Modeling
+Given Kubernetes' system components and the STRIDE framework, identify five potential threats that may arise.
+
+Docker-bench Run Results and Analysis
+From the failed findings, select and document 3 findings from the Docker-bench results that you want to harden based on the 5 attack surface areas you identified in Step 1. At least 1 of the 3 hardened findings should be different from the ones mentioned in the exercise (i.e. 5.10, 5.14, and 5.22).
