@@ -72,6 +72,91 @@ kernel.keys.root_maxbytes=25000000
 * docker run --pid=host -v /etc/passwd:/etc/passwd -v /etc/group:/etc/group -v /etc:/node/etc:ro -v /var:/node/var:ro -ti rancher/security-scan:v0.2.2 bash
 * kube-bench run --targets etcd,master,controlplane,policies --scored --config-dir=/etc/kube-bench/cfg --benchmark rke-cis-1.6-hardened | grep FAIL  
 
+## Implement Runtime Monitoring and Grafana
+### Install Falco Drivers on the Node
+* ssh root@192.168.50.101
+* rpm --import https://falco.org/repo/falcosecurity-packages.asc
+* curl -s -o /etc/zypp/repos.d/falcosecurity.repo https://falco.org/repo/falcosecurity-rpm.repo
+* sudo zypper dist-upgrade
+### Reboot and install kernel headers
+* sudo reboot
+* (after some minutes:) ssh root@192.168.50.101
+* sudo zypper -n install dkms make
+* sudo zypper -n install kernel-default-devel
+* sudo zypper -n install dialog
+### Install Falco on the Node
+* sudo zypper -n install falco
+* sudo systemctl status falco (## Verify the installation)
+* if error: "Unit falco.service could not be found." 
+* sudo systemctl enable falco-kmod.service
+### Reload Systemd and Start the Service
+* sudo systemctl daemon-reload
+* sudo systemctl enable falco
+* sudo systemctl start falco
+### Install Falco as a Daemonset on RKE Cluster
+### Install Helm on the Host:
+* curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+* chmod 700 get_helm.sh
+* sudo ./get_helm.sh  ---> helm installed into /usr/local/bin/helm!!!
+* helm version
+### Install Falco on the Master Node as a Daemonset
+* helm repo add falcosecurity https://falcosecurity.github.io/charts
+* helm repo update
+* helm install --kubeconfig kube_config_cluster.yml falco falcosecurity/falco --namespace falco --create-namespace --set falco.grpc.enabled=true --set falco.grpc_output.enabled=true
+* If needed, to uninstall a helm deployment, you can run:  
+helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces  
+helm uninstall falco --kubeconfig kube_config_cluster.yml  --namespace falco  
+### Check the Falco Daemonset health
+* kubectl --kubeconfig kube_config_cluster.yml get namespace
+* kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco
+* kubectl --kubeconfig kube_config_cluster.yml get ds --namespace falco 
+* kubectl --kubeconfig kube_config_cluster.yml get ds falco --namespace falco -o yaml | grep serviceAcc
+
+### Troubleshooting:
+* kubectl --kubeconfig kube_config_cluster.yml get events --namespace falco
+* kubectl --kubeconfig kube_config_cluster.yml describe nodes
+* kubectl --kubeconfig kube_config_cluster.yml describe node node1
+* kubectl --kubeconfig kube_config_cluster.yml describe pod <pod-name> -n falco
+* kubectl --kubeconfig kube_config_cluster.yml logs falco-4lflg -n falco -c falco-driver-loader
+* Error Pod creation: "PodSecurityPolicy enabled" in cluster.yml:  
+```
+kube-api:
+  pod_security_policy: true
+```
+
+### Monitor Runtime Events
+* kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco
+* kubectl --kubeconfig kube_config_cluster.yml exec --stdin -it falco-l2z52 --namespace falco -- /bin/bash
+* export PS1='\e[0;31m\u@\h:\W> \e[m'
+* cat /etc/falco/falco.yaml # ## View the falco.yaml file.
+* kubectl --kubeconfig kube_config_cluster.yml logs falco-l2z52 --namespace falco
+* kubectl --kubeconfig kube_config_cluster.yml logs falco-l2z52 --namespace falco | grep adduser
+* kubectl --kubeconfig kube_config_cluster.yml logs falco-l2z52 --namespace falco | grep etc/shadow
+
+### Deploy Kube-prometheus-stack
+* kubectl apply --kubeconfig kube_config_cluster.yml  --validate=false -f https://github.com/cert-manager/cert-manager/releases/download/v1.3.1/cert-manager.yaml # Install the CustomResourceDefinition resources separately
+* helm repo add jetstack https://charts.jetstack.io
+* helm repo update
+* helm install --kubeconfig kube_config_cluster.yml cert-manager jetstack/cert-manager  --namespace cert-manager --create-namespace --version v1.3.1
+* helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+* helm repo add stable https://charts.helm.sh/stable
+* helm repo update 
+* helm install --kubeconfig kube_config_cluster.yml prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace --generate-name  --version 16.5.0
+* helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces
+* kubectl --kubeconfig kube_config_cluster.yml get pods --namespace monitoring
+* (in case of problems) helm uninstall kube-prometheus-stack-1747136684 --kubeconfig kube_config_cluster.yml --namespace monitoring
+### Install Falco exporter
+* helm repo update
+* helm install --kubeconfig kube_config_cluster.yml falco-exporter --namespace falco --set serviceMonitor.enabled=true falcosecurity/falco-exporter
+* helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces
+* kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco
+* (in case of problems:)  
+helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces  
+helm uninstall falco-exporter --kubeconfig kube_config_cluster.yml  --namespace falco
+### Port-forward the falco-exporter
+* export POD_NAME=$(kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco -l "app.kubernetes.io/name=falco-exporter,app.kubernetes.io/instance=falco-exporter" -o jsonpath="{.items[0].metadata.name}")
+* echo $POD_NAME
+* kubectl --kubeconfig kube_config_cluster.yml port-forward --namespace falco $POD_NAME 9376
 
 ## Tips
 * We can access a running Docker container using `kubectl exec -it <pod_id> sh`. From there, we can `curl` an endpoint to debug network issues.
