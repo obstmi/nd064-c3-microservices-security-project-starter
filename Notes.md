@@ -78,27 +78,32 @@ kernel.keys.root_maxbytes=25000000
 * rpm --import https://falco.org/repo/falcosecurity-packages.asc
 * curl -s -o /etc/zypp/repos.d/falcosecurity.repo https://falco.org/repo/falcosecurity-rpm.repo
 * sudo zypper dist-upgrade
+
 ### Reboot and install kernel headers
 * sudo reboot
 * (after some minutes:) ssh root@192.168.50.101
 * sudo zypper -n install dkms make
 * sudo zypper -n install kernel-default-devel
 * sudo zypper -n install dialog
+
 ### Install Falco on the Node
 * sudo zypper -n install falco
 * sudo systemctl status falco (## Verify the installation)
 * if error: "Unit falco.service could not be found." 
 * sudo systemctl enable falco-kmod.service
+
 ### Reload Systemd and Start the Service
 * sudo systemctl daemon-reload
 * sudo systemctl enable falco
 * sudo systemctl start falco
-### Install Falco as a Daemonset on RKE Cluster
+
+## Install Falco as a Daemonset on RKE Cluster
 ### Install Helm on the Host:
 * curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
 * chmod 700 get_helm.sh
 * sudo ./get_helm.sh  ---> helm installed into /usr/local/bin/helm!!!
 * helm version
+
 ### Install Falco on the Master Node as a Daemonset
 * helm repo add falcosecurity https://falcosecurity.github.io/charts
 * helm repo update
@@ -106,6 +111,7 @@ kernel.keys.root_maxbytes=25000000
 * If needed, to uninstall a helm deployment, you can run:  
 helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces  
 helm uninstall falco --kubeconfig kube_config_cluster.yml  --namespace falco  
+
 ### Check the Falco Daemonset health
 * kubectl --kubeconfig kube_config_cluster.yml get namespace
 * kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco
@@ -123,6 +129,17 @@ helm uninstall falco --kubeconfig kube_config_cluster.yml  --namespace falco
 kube-api:
   pod_security_policy: true
 ```
+### Problems with DNS resolution:  
+kubectl --kubeconfig kube_config_cluster.yml get configmap coredns -n kube-system -o yaml  
+* Edit ConfigMap:  
+kubectl --kubeconfig kube_config_cluster.yml edit configmap coredns -n kube-system 
+* Change forward-entry:  
+forward . 8.8.8.8 1.1.1.1
+* Save and restart CoreDNS-Pods:  
+kubectl --kubeconfig kube_config_cluster.yml delete pod -n kube-system -l k8s-app=kube-dns
+* Test network:  
+ssh root@192.168.50.101  
+ping google.com  
 
 ### Monitor Runtime Events
 * kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco
@@ -145,6 +162,7 @@ kube-api:
 * helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces
 * kubectl --kubeconfig kube_config_cluster.yml get pods --namespace monitoring
 * (in case of problems) helm uninstall kube-prometheus-stack-1747136684 --kubeconfig kube_config_cluster.yml --namespace monitoring
+
 ### Install Falco exporter
 * helm repo update
 * helm install --kubeconfig kube_config_cluster.yml falco-exporter --namespace falco --set serviceMonitor.enabled=true falcosecurity/falco-exporter
@@ -153,10 +171,36 @@ kube-api:
 * (in case of problems:)  
 helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces  
 helm uninstall falco-exporter --kubeconfig kube_config_cluster.yml  --namespace falco
+
 ### Port-forward the falco-exporter
 * export POD_NAME=$(kubectl --kubeconfig kube_config_cluster.yml get pods --namespace falco -l "app.kubernetes.io/name=falco-exporter,app.kubernetes.io/instance=falco-exporter" -o jsonpath="{.items[0].metadata.name}")
 * echo $POD_NAME
 * kubectl --kubeconfig kube_config_cluster.yml port-forward --namespace falco $POD_NAME 9376
+
+### Port-forward the kube-prometheus-stack
+* helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces
+* kubectl --kubeconfig kube_config_cluster.yml --namespace monitoring get pods
+* kubectl --kubeconfig kube_config_cluster.yml get pods,svc --namespace=monitoring
+* Option 1 - You can either Port forward the specific pod   
+kubectl --kubeconfig kube_config_cluster.yml --namespace monitoring port-forward pod/prometheus-kube-prometheus-stack-1670-prometheus-0 9090
+* Option 2 - Alternatively, you can Port forward the service  
+kubectl --kubeconfig kube_config_cluster.yml --namespace monitoring port-forward service/kube-prometheus-stack-1747-prometheus 9090:9090
+
+### Create ServiceMonitor file
+* Get the prometheus release name  
+helm list --kubeconfig kube_config_cluster.yml --all --all-namespaces
+* Update falco_service_monitor.yaml  
+vi falco_service_monitor.yaml
+* Apply the falco_service_monitor.yaml  
+kubectl --kubeconfig kube_config_cluster.yml apply -f falco_service_monitor.yaml
+
+### Import Falco Grafana Panel and Monitor Metrics
+* Copy the Grafana pod name, similar to *kube-prometheus-stack-1670914524-grafana-87678fb8d-7nc7x*  
+kubectl --kubeconfig kube_config_cluster.yml get pod --namespace monitoring  
+=> kube-prometheus-stack-1747137131-grafana-79b96fb7ff-2nvtk
+* Port forward the Grafana pod on port 3000  
+kubectl --kubeconfig kube_config_cluster.yml --namespace monitoring  port-forward kube-prometheus-stack-1747137131-grafana-79b96fb7ff-2nvtk 3000
+* Username: admin  Password: prom-operator
 
 ## Tips
 * We can access a running Docker container using `kubectl exec -it <pod_id> sh`. From there, we can `curl` an endpoint to debug network issues.
