@@ -1,0 +1,24 @@
+1. Incident commander name:
+Michael Obst
+
+2. Executive Summary of what happened:
+Three pods in the default namespace of our Kubernetes cluster were started without permission. 
+These pods run cryptomining software.
+
+3. Summary of what was affected:
+The Kubernetes cluster was directly affected by the deployment of the cryptomining pods.
+
+4. Summary of the impact:
+The cryptomining pods consumed a significant amount of computing resources.
+This can affect the performance of the regular software and even block or crash the Kuberntes cluster. 
+Due to the early detection, however, an external impact could be avoided.
+
+5. Summary of the remediation steps:
+The corresponding pods were promptly identified and terminated in order to mitigate resource consumption and security risks. 
+The Kubernetes cluster configuration and security policies has been checked carefully. If necessary, all software versions have been updated.
+Passwords were exchanged and the kubeconfig file was regenerated.
+
+6. Summary of lessons learned:
+Regular and ideally automated analysis and hardening of the attack surface of the system is a basic requirement.
+This includes the regular installation of software patches and updates as well as compliance with access guidelines.
+Runtime monitoring is also essential in order to detect and rectify security incidents at an early stage.

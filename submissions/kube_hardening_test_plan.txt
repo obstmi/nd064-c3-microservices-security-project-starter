@@ -1,0 +1,17 @@
+Kubernetes Cluster Hardening – System Stability Test Plan
+
+The primary objective of this test plan is to ensure that security hardening measures applied to a Kubernetes cluster do not compromise system stability, availability, or functionality. 
+All hardening configurations will first be implemented in a non-production, staging environment that mirrors the production cluster as closely as possible, including similar workloads, node types, network policies, and access controls.
+
+How will we test the changes?
+We will use a multi-phase approach to validate the changes. 
+Initially, automated conformance tests will be run to verify that the cluster remains compliant with Kubernetes specifications. 
+Next, we will deploy representative workloads and perform functional tests on core services, including ingress controllers, DNS resolution, logging, and monitoring. 
+Load testing tools will simulate realistic traffic to evaluate performance under load.
+
+How will we ensure the changes don't negatively affect the cluster?
+We will closely monitor key health indicators including pod restarts, node resource usage, network latency, and application error rates. 
+Alerts will be configured via Prometheus and Grafana to detect anomalies. 
+A rollback plan will be in place for each hardening step to ensure fast recovery in case of degradation. 
+Only after passing all tests without regressions will changes be considered for production. 
+Finally, a canary deployment strategy will be used to gradually apply hardening in production, ensuring real-world stability before full rollout.

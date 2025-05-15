@@ -1,4 +1,4 @@
-Docker Threat Modeling
+### Docker Threat Modeling ###
 Given Docker's system components and the STRIDE framework, identify five potential threats that may arise.
 
 * Spoofing (Identity Forgery): 
@@ -21,10 +21,28 @@ Unlimited resources: Containers without memory/CPU limits can overload the host 
 Container escape: Vulnerabilities allow breaking out of containers to the host.
 
 
-Kubernetes Threat Modeling
+### Kubernetes Threat Modeling ###
 Given Kubernetes' system components and the STRIDE framework, identify five potential threats that may arise.
 
-Docker-bench Run Results and Analysis
+* Spoofing (Identity Forgery): 
+Calls to the API server or the connection between the API server and the kubelets could be spoofed, if not encrypted.
+
+* Tampering (Data Manipulation): 
+The configuration of etcd may be manipulated with by an attacker, e.g. modifying vital system-level configurations such as pod specs.
+
+* Repudiation (Denial of Action):
+Unauthorized changes could be made to the API server or the kubelets.
+
+* Information Disclosure:
+Sensitive information may be exposed via the etcd key-value store or the Kube-proxy.
+
+* Denial of Service:
+Excessive traffic to the API server can overwhelm the endpoint. Kube-scheduler can incorrectly schedule the pods.
+
+* Elevation of Privilege:
+Using the privileged flag can abuse the privilege.
+
+### Docker-bench Run Results and Analysis ###
 From the failed findings, select and document 3 findings from the Docker-bench results that you want to harden based on the 5 attack surface areas you identified in Step 1. At least 1 of the 3 hardened findings should be different from the ones mentioned in the exercise (i.e. 5.10, 5.14, and 5.22).
 
 [FAIL] 4.5 Ensure Content trust for Docker is Enabled (Scored)
